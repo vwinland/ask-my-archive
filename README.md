@@ -4,7 +4,7 @@ A retrieval-augmented Q&A tool over my own published writing. Ask it a question,
 
 I built this to get hands-on with the parts of AI application development I'd only written about before: chunking, embeddings, retrieval, and grounded generation.
 
-Full write-up: [I built a RAG tool over my own writing. Here's what I learned.](#) *(link to published post)*
+Full write-up: [I built a RAG tool over my own writing. Here's what I learned.](https://vwinland.github.io/blog/build-log-ask-my-archive)
 
 ## What's actually built
 
