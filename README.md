@@ -1,42 +1,36 @@
 # Ask My Archive
 
-A RAG tool over Vanna Winland's published writing (personal blog, HackerNoon,
-Medium, IBM Think explainers/tutorials).
+A retrieval-augmented Q&A tool over my own published writing. Ask it a question, it retrieves the relevant excerpts from my blog, HackerNoon, and IBM Think, and answers grounded in what I actually wrote, with citations back to the source.
+
+I built this to get hands-on with the parts of AI application development I'd only written about before: chunking, embeddings, retrieval, and grounded generation.
+
+Full write-up: [I built a RAG tool over my own writing. Here's what I learned.](#) *(link to published post)*
+
+## What's actually built
+
+- **Metadata schema** handling syndication across four platforms (blog, HackerNoon, Medium, IBM Think), so the same essay published under different titles on different sites resolves to one canonical entry instead of duplicate, conflicting chunks
+- **Paragraph-based chunking** with short-paragraph merging
+- **Local embeddings** (`all-MiniLM-L6-v2`), chosen deliberately over a hosted embedding API since the corpus is too small to need one
+- **Chroma vector store**, local and persistent
+- **Swappable generation backend** — Claude API or a local Ollama model, same retrieval and citation-parsing logic underneath
+- **Citation-grounded prompting**, tested against the failure mode that actually matters for a tool like this: does it correctly say "I don't know" instead of guessing, when the corpus doesn't cover the question
+
+16 blog posts fully indexed and tested end to end (392 chunks). 27 IBM Think pieces and a tutorials repo identified and mapped, not yet ingested.
+
+## What I'd add for production
+
+This is the retrieval and generation core, built and tested. It is not a production system, and I want to be specific about the gap rather than either overclaiming or underselling it:
+
+- **An evaluation harness.** I validated retrieval against three manual test questions. Production needs a labeled set of questions with known-correct sources, run automatically on every pipeline change.
+- **Monitoring.** I read the outputs by hand. Production needs logging on every query, with flags on declines and high-distance retrievals, reviewed regularly to catch corpus gaps or drift.
+- **Access control.** My corpus is all public writing, so this hasn't mattered yet. A business RAG system usually needs retrieval to respect who's asking, not just what's semantically closest.
+- **Continuous ingestion.** I ran indexing once, by hand. Production needs a pipeline that detects new or updated source documents automatically.
+- **Cost tracking at volume.** Three test questions cost nine cents. That's invisible at this scale and a real line item at production query volume.
+
+## Stack
+
+Python, Chroma, sentence-transformers, Anthropic API, Ollama.
 
 ## Status
 
-Architecture validated end to end in a sandboxed dev environment (chunking,
-metadata schema, Chroma storage, retrieval all confirmed working — see
-`ingest/smoke_test.py`). Not yet run with the real embedding model, since
-that sandbox couldn't reach huggingface.co. This will work normally with
-regular internet access.
-
-## Structure
-
-- `ingest/schema.py` — metadata schema (syndication, content type, series, co-authors)
-- `ingest/chunk.py` — paragraph-based chunker
-- `ingest/vector_store.py` — Chroma + sentence-transformers (the real embedding setup — use this)
-- `ingest/ingest_sample.py` — example ingestion script on 2 sample essays
-- `sample_data/` — 2 sample essays for testing
-- `ingest/test_embedding_stub.py`, `ingest/smoke_test.py` — sandbox-only test stubs, not for real use, safe to delete
-
-## First run, locally
-
-```
-pip install -r requirements.txt
-cd ingest
-python3 ingest_sample.py
-```
-
-This downloads the `all-MiniLM-L6-v2` embedding model the first time (small,
-one-time download) and indexes the 2 sample essays into `store/chroma_db`.
-
-## Next steps
-
-1. Confirm `ingest_sample.py` runs cleanly with the real embedding model
-2. Write loaders for each real source: blog markdown, HackerNoon/Medium
-   (matched via the syndication table already built), IBM Think explainers,
-   and the ibmdotcom-tutorials repo (markdown + notebook cells)
-3. Build the query pipeline: retrieve top-k chunks -> pass to Claude with a
-   prompt that only answers from retrieved chunks and cites the source
-4. Build a minimal chat UI
+Actively being extended. Next: ingest IBM Think and the tutorials repo, build a chat interface.
