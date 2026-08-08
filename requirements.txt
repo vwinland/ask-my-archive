@@ -1,0 +1,4 @@
+chromadb
+sentence-transformers
+anthropic
+ollama

@@ -1,0 +1,29 @@
+cat > .gitignore << 'EOF'
+# secrets
+.env
+
+# python
+__pycache__/
+*.pyc
+*.pyo
+
+# virtual environment
+.venv/
+venv/
+env/
+
+# vector database (regenerable from source data, shouldn't be tracked)
+store/chroma_db/
+
+# macOS
+.DS_Store
+
+# jupyter
+.ipynb_checkpoints/
+
+# claude code local settings
+.claude/settings.local.json
+
+# cached clone of external repo
+ingest/_sources/
+EOF
