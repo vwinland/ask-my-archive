@@ -10,12 +10,22 @@ and runs offline. Worth writing about: matching infra to actual scale
 instead of defaulting to "the cloud API everyone uses."
 """
 
+from pathlib import Path
+
 import chromadb
 from chromadb.utils import embedding_functions
 
 from schema import Chunk
 
-DB_PATH = "../store/chroma_db"
+# Anchored to this file's location, not the caller's working directory. A
+# bare relative path here resolves against os.getcwd(), and callers don't
+# share one cwd convention: ingest scripts and query/ask.py are run from
+# their own directory ("cd ingest && python3 ...", per each script's own
+# docstring), but Streamlit Cloud runs `streamlit run app/app.py` from the
+# repo root. A relative "../store/chroma_db" resolves correctly for the
+# former and lands outside the repo entirely for the latter — Chroma then
+# silently creates a fresh, empty collection there instead of erroring.
+DB_PATH = str(Path(__file__).resolve().parent.parent / "store" / "chroma_db")
 COLLECTION_NAME = "essay_archive"
 
 
