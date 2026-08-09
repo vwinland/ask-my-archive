@@ -2,11 +2,19 @@
 Query pipeline: retrieve top-k chunks from the vector store, ground a
 generated answer in them, and report which sources it actually cited.
 
-Generation is pluggable between Claude (hosted, costs money) and a local
-Ollama model (free, runs on your machine) via --backend. Retrieval,
+Generation is pluggable across three backends via --backend: Claude (hosted,
+costs money), a local Ollama model (free, runs on your machine), and
+Hugging Face's free Serverless Inference API (free, hosted, no billing risk
+since there's no payment method attached to a free HF token). Retrieval,
 prompt-building, and citation parsing are all backend-agnostic — only
-generate_answer() and its two private helpers know which API they're
+generate_answer() and its three private helpers know which API they're
 talking to.
+
+The core logic is the ask() function, which takes a question and returns an
+AskResult with no side effects (no printing) — this is what app/app.py
+imports directly, so the Streamlit app and the CLI share the exact same
+retrieve -> prompt -> generate -> parse pipeline. Everything below
+`if __name__ == "__main__":` is a thin CLI wrapper around that same function.
 
 Design note for the write-up: whether to filter out low-relevance chunks
 before they hit the prompt, or always hand the model whatever top-k returns
@@ -15,21 +23,30 @@ On a ~30-40 document corpus there's no labeled relevance set to calibrate a
 distance cutoff against, so a hardcoded threshold would be a guess dressed up
 as a number. Telling the model explicitly to admit when the excerpts don't
 cover the question is a more legible failure mode, and cheap to verify (see
-the near-miss question in the test list below) — including whether a smaller
-local model follows that instruction as reliably as Claude does.
+the near-miss question in comparison_results.md) — including whether a
+smaller local or free-tier model follows that instruction as reliably as
+Claude does.
 
 Run from within this directory:
-    python3 ask.py "your question"                      # ollama, llama3.1
+    python3 ask.py "your question"                        # ollama, llama3.1
     python3 ask.py "your question" --backend claude
+    python3 ask.py "your question" --backend huggingface
     python3 ask.py "your question" --backend ollama --model mistral
 
 Setup for the ollama backend: brew install ollama && ollama pull llama3.1,
 then `ollama serve` (may already be running after install).
+
+Setup for the huggingface backend: a free token from huggingface.co/settings/tokens,
+set as the HF_TOKEN environment variable (or st.secrets["HF_TOKEN"] in the
+deployed Streamlit app — app.py bridges that into the HF_TOKEN env var so
+this module never needs to know about Streamlit).
 """
 
 import argparse
+import os
 import re
 import sys
+from dataclasses import dataclass, field
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "ingest"))
@@ -39,14 +56,33 @@ from vector_store import get_collection
 
 CLAUDE_MODEL = "claude-opus-5"
 OLLAMA_MODEL = "llama3.1"
+HF_MODEL = "meta-llama/Llama-3.1-8B-Instruct"
+DEFAULT_MODELS = {"claude": CLAUDE_MODEL, "ollama": OLLAMA_MODEL, "huggingface": HF_MODEL}
+
 TOP_K = 5
 DEFAULT_QUESTION = "What has Vanna written about how AI changes code review?"
 
 CITED_RE = re.compile(r"CITED:\s*(.+)", re.IGNORECASE | re.DOTALL)
 
 
-class RefusalError(Exception):
+class GenerationError(Exception):
+    """A generation failure with a message that's safe to show a user directly
+    (rate limit, cold start, declined request) — as opposed to an unhandled
+    exception, which is a bug and should surface with its real traceback."""
+
+
+class RefusalError(GenerationError):
     pass
+
+
+@dataclass
+class AskResult:
+    question: str
+    backend: str
+    model: str
+    answer: str = ""
+    sources: list[dict] = field(default_factory=list)
+    error: str | None = None
 
 
 def retrieve(question: str, k: int = TOP_K) -> list[dict]:
@@ -92,7 +128,9 @@ def generate_answer(prompt: str, backend: str, model: str) -> str:
         return _generate_claude(prompt, model)
     if backend == "ollama":
         return _generate_ollama(prompt, model)
-    raise ValueError(f"Unknown backend: {backend!r} (expected 'claude' or 'ollama')")
+    if backend == "huggingface":
+        return _generate_huggingface(prompt, model)
+    raise ValueError(f"Unknown backend: {backend!r} (expected 'claude', 'ollama', or 'huggingface')")
 
 
 def _generate_claude(prompt: str, model: str) -> str:
@@ -111,16 +149,41 @@ def _generate_ollama(prompt: str, model: str) -> str:
     try:
         import ollama
     except ImportError as e:
-        raise RuntimeError("The `ollama` package isn't installed. Run: pip install ollama") from e
+        raise GenerationError("The `ollama` package isn't installed. Run: pip install ollama") from e
 
     try:
         response = ollama.generate(model=model, prompt=prompt, stream=False)
     except Exception as e:
-        raise RuntimeError(
+        raise GenerationError(
             f"Could not get a response from Ollama (model={model!r}). Make sure the "
             f"server is running (`ollama serve`) and the model is pulled (`ollama pull {model}`)."
         ) from e
     return response["response"]
+
+
+def _generate_huggingface(prompt: str, model: str) -> str:
+    try:
+        from huggingface_hub import InferenceClient
+    except ImportError as e:
+        raise GenerationError(
+            "The `huggingface_hub` package isn't installed. Run: pip install huggingface_hub"
+        ) from e
+
+    token = os.environ.get("HF_TOKEN")
+    client = InferenceClient(model=model, token=token)
+    try:
+        response = client.chat_completion(
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=1024,
+        )
+    except Exception as e:
+        # Rate limits and cold starts are normal and expected on the free tier —
+        # surface a friendly message rather than the raw HTTP error.
+        raise GenerationError(
+            "Hugging Face's free inference API is unavailable right now (this is usually "
+            "a rate limit or a model cold start). Please try again in a moment."
+        ) from e
+    return response.choices[0].message.content
 
 
 def parse_cited_indices(full_text: str) -> list[int]:
@@ -138,26 +201,7 @@ def parse_cited_indices(full_text: str) -> list[int]:
     return indices
 
 
-def ask(question: str, backend: str = "ollama", model: str | None = None, k: int = TOP_K) -> None:
-    resolved_model = model or (CLAUDE_MODEL if backend == "claude" else OLLAMA_MODEL)
-
-    excerpts = retrieve(question, k)
-    prompt = build_prompt(question, excerpts)
-
-    print(f"Question: {question}")
-    print(f"Backend: {backend} ({resolved_model})\n")
-
-    try:
-        full_text = generate_answer(prompt, backend, resolved_model)
-    except RefusalError as e:
-        print(str(e))
-        return
-
-    answer = full_text.partition("CITED:")[0].strip()
-    cited_indices = parse_cited_indices(full_text)
-
-    print(f"Answer:\n{answer}\n")
-
+def _dedupe_sources(excerpts: list[dict], cited_indices: list[int]) -> list[dict]:
     seen = set()
     sources = []
     for i in cited_indices:
@@ -166,12 +210,45 @@ def ask(question: str, backend: str = "ollama", model: str | None = None, k: int
             key = (e["title"], e["url"])
             if key not in seen:
                 seen.add(key)
-                sources.append(e)
+                sources.append({"title": e["title"], "url": e["url"]})
+    return sources
 
+
+def ask(question: str, backend: str = "huggingface", model: str | None = None, k: int = TOP_K) -> AskResult:
+    """Retrieve, build the prompt, generate, and parse citations. Pure function,
+    no printing — the CLI and the Streamlit app both call this directly."""
+    resolved_model = model or DEFAULT_MODELS[backend]
+
+    excerpts = retrieve(question, k)
+    prompt = build_prompt(question, excerpts)
+
+    try:
+        full_text = generate_answer(prompt, backend, resolved_model)
+    except GenerationError as e:
+        return AskResult(question=question, backend=backend, model=resolved_model, error=str(e))
+
+    answer = full_text.partition("CITED:")[0].strip()
+    cited_indices = parse_cited_indices(full_text)
+    sources = _dedupe_sources(excerpts, cited_indices)
+
+    return AskResult(
+        question=question, backend=backend, model=resolved_model, answer=answer, sources=sources
+    )
+
+
+def _print_result(result: AskResult) -> None:
+    print(f"Question: {result.question}")
+    print(f"Backend: {result.backend} ({result.model})\n")
+
+    if result.error:
+        print(result.error)
+        return
+
+    print(f"Answer:\n{result.answer}\n")
     print("Sources:")
-    if sources:
-        for e in sources:
-            print(f"  - {e['title']} ({e['url']})")
+    if result.sources:
+        for s in result.sources:
+            print(f"  - {s['title']} ({s['url']})")
     else:
         print("  (none cited)")
 
@@ -179,7 +256,7 @@ def ask(question: str, backend: str = "ollama", model: str | None = None, k: int
 def parse_args():
     parser = argparse.ArgumentParser(description="Ask a question grounded in the essay archive.")
     parser.add_argument("question", nargs="?", default=DEFAULT_QUESTION)
-    parser.add_argument("--backend", choices=["claude", "ollama"], default="ollama")
+    parser.add_argument("--backend", choices=["claude", "ollama", "huggingface"], default="ollama")
     parser.add_argument("--model", default=None, help="Override the model for the chosen backend")
     parser.add_argument("-k", type=int, default=TOP_K, help="Number of chunks to retrieve")
     return parser.parse_args()
@@ -187,4 +264,5 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
-    ask(args.question, backend=args.backend, model=args.model, k=args.k)
+    result = ask(args.question, backend=args.backend, model=args.model, k=args.k)
+    _print_result(result)

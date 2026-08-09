@@ -1,0 +1,14 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "ask-my-archive-app",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "cd /Users/vannawinland/Downloads/ask-my-archive && source .venv/bin/activate && streamlit run app/app.py --server.headless true"
+      ],
+      "port": 8501
+    }
+  ]
+}

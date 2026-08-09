@@ -1,4 +1,3 @@
-cat > .gitignore << 'EOF'
 # secrets
 .env
 
@@ -12,9 +11,6 @@ __pycache__/
 venv/
 env/
 
-# vector database (regenerable from source data, shouldn't be tracked)
-store/chroma_db/
-
 # macOS
 .DS_Store
 
@@ -26,4 +22,3 @@ store/chroma_db/
 
 # cached clone of external repo
 ingest/_sources/
-EOF
