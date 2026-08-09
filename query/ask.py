@@ -56,7 +56,7 @@ from vector_store import get_collection
 
 CLAUDE_MODEL = "claude-opus-5"
 OLLAMA_MODEL = "llama3.1"
-HF_MODEL = "meta-llama/Llama-3.1-8B-Instruct"
+HF_MODEL = "Qwen/Qwen2.5-7B-Instruct"
 DEFAULT_MODELS = {"claude": CLAUDE_MODEL, "ollama": OLLAMA_MODEL, "huggingface": HF_MODEL}
 
 TOP_K = 5
