@@ -177,8 +177,11 @@ def _generate_huggingface(prompt: str, model: str) -> str:
             max_tokens=1024,
         )
     except Exception as e:
-        # Rate limits and cold starts are normal and expected on the free tier —
-        # surface a friendly message rather than the raw HTTP error.
+        # The UI only ever shows a friendly message (rate limits and cold starts
+        # are normal on the free tier), but print the real cause to stderr so
+        # it's visible in server logs (e.g. Streamlit Cloud's log viewer) —
+        # otherwise every HF failure, including real bugs, looks identical.
+        print(f"[huggingface backend] {type(e).__name__}: {e}", file=sys.stderr)
         raise GenerationError(
             "Hugging Face's free inference API is unavailable right now (this is usually "
             "a rate limit or a model cold start). Please try again in a moment."
