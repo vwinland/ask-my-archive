@@ -68,7 +68,16 @@ CITED_RE = re.compile(r"CITED:\s*(.+)", re.IGNORECASE | re.DOTALL)
 class GenerationError(Exception):
     """A generation failure with a message that's safe to show a user directly
     (rate limit, cold start, declined request) — as opposed to an unhandled
-    exception, which is a bug and should surface with its real traceback."""
+    exception, which is a bug and should surface with its real traceback.
+
+    debug_detail carries the real underlying exception (type + message) so
+    callers can surface it somewhere a human will actually see it — the
+    Streamlit app puts it in a collapsed expander, since digging through a
+    hosting provider's log viewer by hand is slow and error-prone."""
+
+    def __init__(self, message: str, debug_detail: str | None = None):
+        super().__init__(message)
+        self.debug_detail = debug_detail
 
 
 class RefusalError(GenerationError):
@@ -83,6 +92,7 @@ class AskResult:
     answer: str = ""
     sources: list[dict] = field(default_factory=list)
     error: str | None = None
+    debug_detail: str | None = None
 
 
 def retrieve(question: str, k: int = TOP_K) -> list[dict]:
@@ -149,14 +159,18 @@ def _generate_ollama(prompt: str, model: str) -> str:
     try:
         import ollama
     except ImportError as e:
-        raise GenerationError("The `ollama` package isn't installed. Run: pip install ollama") from e
+        raise GenerationError(
+            "The `ollama` package isn't installed. Run: pip install ollama",
+            debug_detail=f"{type(e).__name__}: {e}",
+        ) from e
 
     try:
         response = ollama.generate(model=model, prompt=prompt, stream=False)
     except Exception as e:
         raise GenerationError(
             f"Could not get a response from Ollama (model={model!r}). Make sure the "
-            f"server is running (`ollama serve`) and the model is pulled (`ollama pull {model}`)."
+            f"server is running (`ollama serve`) and the model is pulled (`ollama pull {model}`).",
+            debug_detail=f"{type(e).__name__}: {e}",
         ) from e
     return response["response"]
 
@@ -166,7 +180,8 @@ def _generate_huggingface(prompt: str, model: str) -> str:
         from huggingface_hub import InferenceClient
     except ImportError as e:
         raise GenerationError(
-            "The `huggingface_hub` package isn't installed. Run: pip install huggingface_hub"
+            "The `huggingface_hub` package isn't installed. Run: pip install huggingface_hub",
+            debug_detail=f"{type(e).__name__}: {e}",
         ) from e
 
     token = os.environ.get("HF_TOKEN")
@@ -178,13 +193,13 @@ def _generate_huggingface(prompt: str, model: str) -> str:
         )
     except Exception as e:
         # The UI only ever shows a friendly message (rate limits and cold starts
-        # are normal on the free tier), but print the real cause to stderr so
-        # it's visible in server logs (e.g. Streamlit Cloud's log viewer) —
-        # otherwise every HF failure, including real bugs, looks identical.
-        print(f"[huggingface backend] {type(e).__name__}: {e}", file=sys.stderr)
+        # are normal on the free tier), but attach the real cause as debug_detail
+        # so it can be surfaced somewhere a human will actually see it — every
+        # HF failure otherwise looks identical from the outside.
         raise GenerationError(
             "Hugging Face's free inference API is unavailable right now (this is usually "
-            "a rate limit or a model cold start). Please try again in a moment."
+            "a rate limit or a model cold start). Please try again in a moment.",
+            debug_detail=f"{type(e).__name__}: {e}",
         ) from e
     return response.choices[0].message.content
 
@@ -228,7 +243,13 @@ def ask(question: str, backend: str = "huggingface", model: str | None = None, k
     try:
         full_text = generate_answer(prompt, backend, resolved_model)
     except GenerationError as e:
-        return AskResult(question=question, backend=backend, model=resolved_model, error=str(e))
+        return AskResult(
+            question=question,
+            backend=backend,
+            model=resolved_model,
+            error=str(e),
+            debug_detail=e.debug_detail,
+        )
 
     answer = full_text.partition("CITED:")[0].strip()
     cited_indices = parse_cited_indices(full_text)
@@ -245,6 +266,8 @@ def _print_result(result: AskResult) -> None:
 
     if result.error:
         print(result.error)
+        if result.debug_detail:
+            print(f"Debug: {result.debug_detail}")
         return
 
     print(f"Answer:\n{result.answer}\n")

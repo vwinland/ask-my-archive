@@ -65,6 +65,9 @@ if submitted:
 
         if result.error:
             st.info(f"Couldn't get an answer this time: {result.error}")
+            if result.debug_detail:
+                with st.expander("Technical details"):
+                    st.code(result.debug_detail)
         else:
             st.markdown("### Answer")
             st.write(result.answer)
