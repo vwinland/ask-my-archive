@@ -16,6 +16,7 @@ Live app: [Ask My Archive on Streamlit](https://ask-my-archive-gkuq5o8tdvnc7cs3w
 - **Chroma vector store**, local and persistent
 - **Swappable generation backend** — Claude API, a local Ollama model, or Hugging Face's free Serverless Inference API, same retrieval and citation-parsing logic underneath. The deployed app runs on Hugging Face (free, no billing risk); Claude and Ollama stay available as CLI flags for local testing and comparison
 - **Streamlit chat interface**, deployed publicly, backed by the same `ask()` pipeline the CLI uses
+- **HackerNoon-inspired pixel styling** — dark theme, blocky borders, icons from HackerNoon's Pixel Icon Library (CC BY 4.0, credited in-app footer)
 - **Citation-grounded prompting**, tested against the failure mode that actually matters for a tool like this: does it correctly say "I don't know" instead of guessing, when the corpus doesn't cover the question
 
 16 blog posts fully indexed and tested end to end (392 chunks). 27 IBM Think pieces and a tutorials repo identified and mapped, not yet ingested.
