@@ -6,13 +6,16 @@ I built this to get hands-on with the parts of AI application development I'd on
 
 Full write-up: [I built a RAG tool over my own writing. Here's what I learned.](https://vwinland.github.io/blog/build-log-ask-my-archive)
 
+Live app: [Ask My Archive on Streamlit](https://ask-my-archive-gkuq5o8tdvnc7cs3wwpcth.streamlit.app/)
+
 ## What's actually built
 
 - **Metadata schema** handling syndication across four platforms (blog, HackerNoon, Medium, IBM Think), so the same essay published under different titles on different sites resolves to one canonical entry instead of duplicate, conflicting chunks
 - **Paragraph-based chunking** with short-paragraph merging
 - **Local embeddings** (`all-MiniLM-L6-v2`), chosen deliberately over a hosted embedding API since the corpus is too small to need one
 - **Chroma vector store**, local and persistent
-- **Swappable generation backend** — Claude API or a local Ollama model, same retrieval and citation-parsing logic underneath
+- **Swappable generation backend** — Claude API, a local Ollama model, or Hugging Face's free Serverless Inference API, same retrieval and citation-parsing logic underneath. The deployed app runs on Hugging Face (free, no billing risk); Claude and Ollama stay available as CLI flags for local testing and comparison
+- **Streamlit chat interface**, deployed publicly, backed by the same `ask()` pipeline the CLI uses
 - **Citation-grounded prompting**, tested against the failure mode that actually matters for a tool like this: does it correctly say "I don't know" instead of guessing, when the corpus doesn't cover the question
 
 16 blog posts fully indexed and tested end to end (392 chunks). 27 IBM Think pieces and a tutorials repo identified and mapped, not yet ingested.
@@ -29,8 +32,8 @@ This is the retrieval and generation core, built and tested. It is not a product
 
 ## Stack
 
-Python, Chroma, sentence-transformers, Anthropic API, Ollama.
+Python, Chroma, sentence-transformers, Streamlit, Anthropic API, Ollama, Hugging Face Inference API.
 
 ## Status
 
-Actively being extended. Next: ingest IBM Think and the tutorials repo, build a chat interface.
+Actively being extended. Chat interface is built and deployed (Streamlit, Hugging Face backend). Next: ingest IBM Think and the tutorials repo.
