@@ -236,7 +236,12 @@ def _dedupe_sources(excerpts: list[dict], cited_indices: list[int]) -> list[dict
 
 def ask(question: str, backend: str = "huggingface", model: str | None = None, k: int = TOP_K) -> AskResult:
     """Retrieve, build the prompt, generate, and parse citations. Pure function,
-    no printing — the CLI and the Streamlit app both call this directly."""
+    no printing — the CLI and the Streamlit app both call this directly.
+
+    Defaults to huggingface to match app.py's deployed (public, free-tier)
+    backend, since that's the safest default for a caller that omits backend
+    entirely. The CLI's own default is ollama instead (see parse_args) —
+    intentionally different, for local runs with no network dependency."""
     resolved_model = model or DEFAULT_MODELS[backend]
 
     excerpts = retrieve(question, k)
@@ -284,6 +289,10 @@ def _print_result(result: AskResult) -> None:
 def parse_args():
     parser = argparse.ArgumentParser(description="Ask a question grounded in the essay archive.")
     parser.add_argument("question", nargs="?", default=DEFAULT_QUESTION)
+    # Defaults to ollama (free, local, no network dependency) for local runs.
+    # --backend claude and --backend huggingface stay available for comparison
+    # (see comparison_results.md); the deployed app always passes huggingface
+    # explicitly regardless of this default (see app.py).
     parser.add_argument("--backend", choices=["claude", "ollama", "huggingface"], default="ollama")
     parser.add_argument("--model", default=None, help="Override the model for the chosen backend")
     parser.add_argument("-k", type=int, default=TOP_K, help="Number of chunks to retrieve")
