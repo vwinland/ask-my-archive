@@ -71,7 +71,7 @@ _inject_css()
 
 st.title("📚 Ask My Archive")
 st.markdown(
-    """*A search engine for one person's brain.*
+    """*A search engine for one person's brain — mine, Vanna Winland's.*
 
 Ask it anything. It'll dig through everything I've actually published,
 find the relevant bits, and answer using only those, no filling in the
