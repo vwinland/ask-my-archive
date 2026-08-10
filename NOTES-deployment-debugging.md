@@ -5,6 +5,8 @@ working end-to-end. Each is a separate root cause; grouped here because they
 surfaced close together while chasing "why doesn't the deployed app behave
 like it does locally."
 
+Published as: [Build Log: Deployment Debugging](https://vwinland.github.io/blog/build-log-deployment-debugging/)
+
 ---
 
 ## 2026-08-09 — Relative path resolution broke the deployed store lookup

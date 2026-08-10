@@ -6,6 +6,8 @@ I built this to get hands-on with the parts of AI application development I'd on
 
 Full write-up: [I built a RAG tool over my own writing. Here's what I learned.](https://vwinland.github.io/blog/build-log-ask-my-archive/)
 
+Follow-up write-up: [Build Log: Deployment Debugging](https://vwinland.github.io/blog/build-log-deployment-debugging/)
+
 Live app: [Ask My Archive on Streamlit](https://ask-my-archive-gkuq5o8tdvnc7cs3wwpcth.streamlit.app/)
 
 ## What's actually built
