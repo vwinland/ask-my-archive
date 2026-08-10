@@ -32,9 +32,7 @@ ASSETS_DIR = Path(__file__).parent / "assets"
 
 GITHUB_REPO_URL = "https://github.com/vwinland/ask-my-archive"
 PORTFOLIO_URL = "https://vwinland.github.io/"
-# TODO: swap in the published URL once the second essay (covering this
-# styling pass) is live — left as a placeholder since styling came first.
-BUILD_LOG_URL = "#"
+BUILD_LOG_URL = "https://vwinland.github.io/blog/build-log-ask-my-archive/"
 PIXEL_ICON_LIBRARY_URL = "https://github.com/hackernoon/pixel-icon-library"
 
 
