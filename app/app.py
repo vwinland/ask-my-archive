@@ -70,7 +70,10 @@ if submitted:
                     st.code(result.debug_detail)
         else:
             st.markdown("### Answer")
-            st.write(result.answer)
+            if result.answer.strip():
+                st.write(result.answer)
+            else:
+                st.write("No relevant information found in the archive for this question.")
 
             st.markdown("### Sources")
             if result.sources:

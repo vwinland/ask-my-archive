@@ -129,6 +129,8 @@ Question: {question}
 
 Answer using only the excerpts above. Cite which essay(s) each part of your answer comes from.
 
+Always write at least one sentence of explanation before the CITED line, even if you are declining to answer because the excerpts don't cover the question. Never respond with only the CITED line.
+
 After your answer, on a new line by itself, write "CITED:" followed by a comma-separated list of the excerpt numbers you actually drew from to answer (e.g. "CITED: 1, 3"). If you could not answer from the excerpts, write "CITED: none".
 """
 
