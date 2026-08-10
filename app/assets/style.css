@@ -1,0 +1,150 @@
+/* HackerNoon-inspired pixel styling, layered on top of .streamlit/config.toml's
+   dark theme. The theme config handles the base palette across all Streamlit
+   widgets; this file adds the retro flourishes (blocky borders, pixel-shadow
+   offsets, display font, icons) without touching answer/citation readability. */
+
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Mono:wght@400;700&display=swap');
+
+:root {
+    --pixel-green: #35e07a;
+    --pixel-green-dim: #1c5c3a;
+    --pixel-bg-panel: #101613;
+    --pixel-text-dim: #9fb8a8;
+}
+
+/* Body copy stays in a plain, readable monospace — the blocky pixel font
+   below is reserved for short display text (title, section headers, buttons)
+   so retro styling never fights with actually reading an answer. */
+.stApp, .stApp p, .stApp li, .stApp span, .stApp label {
+    font-family: 'Space Mono', monospace;
+}
+
+.stApp h1 {
+    font-family: 'Press Start 2P', monospace !important;
+    font-size: 1.4rem !important;
+    line-height: 2rem !important;
+    color: var(--pixel-green) !important;
+    text-shadow: 3px 3px 0 var(--pixel-green-dim);
+    letter-spacing: 1px;
+}
+
+/* Match the top chrome bar to the dark background instead of a stray light strip. */
+[data-testid="stHeader"] {
+    background-color: transparent !important;
+}
+
+/* Blocky pixel border + offset "shadow" on the question form. */
+div[data-testid="stForm"] {
+    border: 3px solid var(--pixel-green) !important;
+    border-radius: 0 !important;
+    box-shadow: 6px 6px 0 var(--pixel-green-dim);
+    padding: 1.4rem !important;
+    background-color: var(--pixel-bg-panel) !important;
+}
+
+div[data-testid="stTextInput"] input {
+    border: 3px solid var(--pixel-green-dim) !important;
+    border-radius: 0 !important;
+    font-family: 'Space Mono', monospace !important;
+}
+div[data-testid="stTextInput"] input:focus {
+    border-color: var(--pixel-green) !important;
+    box-shadow: none !important;
+}
+
+/* Buttons: blocky border, pixel-shadow, "press down" on click. */
+.stButton button, .stFormSubmitButton button {
+    border: 3px solid var(--pixel-green) !important;
+    border-radius: 0 !important;
+    font-family: 'Press Start 2P', monospace !important;
+    font-size: 0.68rem !important;
+    letter-spacing: 1px;
+    box-shadow: 5px 5px 0 var(--pixel-green-dim) !important;
+    transition: transform 0.06s ease-out, box-shadow 0.06s ease-out;
+}
+.stButton button:active, .stFormSubmitButton button:active {
+    transform: translate(5px, 5px);
+    box-shadow: 0 0 0 var(--pixel-green-dim) !important;
+}
+
+/* Custom search-icon label above the question input. */
+.archive-input-label {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+    color: var(--pixel-text-dim);
+    margin-bottom: 0.4rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Nav links row: Read the build log / View the code / My portfolio. */
+.archive-nav {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    margin: 0.75rem 0 1.75rem 0;
+    font-size: 0.85rem;
+}
+.archive-nav a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: var(--pixel-green);
+    text-decoration: none;
+    border-bottom: 2px dashed var(--pixel-green-dim);
+    padding-bottom: 2px;
+}
+.archive-nav a:hover {
+    color: #ffffff;
+    border-bottom-color: var(--pixel-green);
+}
+
+/* Answer / Sources section headers. */
+.archive-section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 0.78rem;
+    color: var(--pixel-green);
+    border-bottom: 3px solid var(--pixel-green-dim);
+    padding-bottom: 0.5rem;
+    margin: 1.75rem 0 0.9rem 0;
+    letter-spacing: 1px;
+}
+
+/* Inline pixel icons, inherited unmodified from HackerNoon's Pixel Icon
+   Library — color comes entirely from this rule, the SVG files on disk
+   are untouched. */
+.pixel-icon {
+    display: inline-flex;
+    line-height: 0;
+}
+.pixel-icon svg {
+    width: 1.1em;
+    height: 1.1em;
+}
+.pixel-icon svg path,
+.pixel-icon svg rect,
+.pixel-icon svg polygon {
+    fill: var(--pixel-green);
+}
+
+/* Attribution footer. */
+.archive-footer {
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 3px dashed var(--pixel-green-dim);
+    font-size: 0.72rem;
+    color: var(--pixel-text-dim);
+    line-height: 1.5;
+}
+.archive-footer a {
+    color: var(--pixel-text-dim);
+    text-decoration: underline;
+}
+.archive-footer a:hover {
+    color: var(--pixel-green);
+}
