@@ -18,6 +18,11 @@
     }
   },
   "updateContentCommand": "[ -f packages.txt ] && sudo apt update && sudo apt upgrade -y && sudo xargs apt install -y <packages.txt; [ -f requirements.txt ] && pip3 install --user -r requirements.txt; pip3 install --user streamlit; echo '✅ Packages installed and Requirements met'",
+  // CORS/XSRF protection disabled here so Codespaces' port-forwarding proxy
+  // doesn't break Streamlit's origin checks. Dev-preview only -- this
+  // config has no effect on the deployed Streamlit Cloud app, which uses
+  // its own defaults, and these flags should never be copied to a
+  // production config.
   "postAttachCommand": {
     "server": "streamlit run app/app.py --server.enableCORS false --server.enableXsrfProtection false"
   },
