@@ -21,7 +21,7 @@ Live app: [Ask My Archive on Streamlit](https://ask-my-archive-gkuq5o8tdvnc7cs3w
 - **HackerNoon-inspired pixel styling** — dark theme, blocky borders, icons from HackerNoon's Pixel Icon Library (CC BY 4.0, credited in-app footer)
 - **Citation-grounded prompting**, tested against the failure mode that actually matters for a tool like this: does it correctly say "I don't know" instead of guessing, when the corpus doesn't cover the question
 
-16 blog posts fully indexed and tested end to end (392 chunks). 27 IBM Think pieces and a tutorials repo identified and mapped, not yet ingested.
+43 documents fully indexed and tested end to end (1,749 chunks): 16 blog posts (392 chunks) plus 27 IBM Think pieces (14 articles, 12 tutorials, 1 piece found only via the IBM Think author page — 1,357 chunks). Tutorial bodies are pulled from the IBM/ibmdotcom-tutorials GitHub repo where a matching file exists (cleaner than the scraped page), falling back to the live IBM Think page otherwise.
 
 ## What I'd add for production
 
@@ -39,4 +39,4 @@ Python, Chroma, sentence-transformers, Streamlit, Anthropic API, Ollama, Hugging
 
 ## Status
 
-Actively being extended. Chat interface is built and deployed (Streamlit, Hugging Face backend). Next: ingest IBM Think and the tutorials repo.
+Actively being extended. Chat interface is built and deployed (Streamlit, Hugging Face backend). Full planned corpus — blog, IBM Think articles, and IBM Think tutorials — is ingested.
