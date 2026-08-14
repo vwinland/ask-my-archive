@@ -40,3 +40,5 @@ Python, Chroma, sentence-transformers, Streamlit, Anthropic API, Ollama, Hugging
 ## Status
 
 Actively being extended. Chat interface is built and deployed (Streamlit, Hugging Face backend). Full planned corpus — blog, IBM Think articles, and IBM Think tutorials — is ingested.
+
+<!-- test change for PR Review Crew demo -->
