@@ -197,6 +197,7 @@ def _generate_huggingface(prompt: str, model: str) -> str:
         response = client.chat_completion(
             messages=[{"role": "user", "content": prompt}],
             max_tokens=1024,
+            temperature=0,
         )
     except BadRequestError as e:
         # HF's router rejects models with no live inference provider enabled on
@@ -218,6 +219,11 @@ def _generate_huggingface(prompt: str, model: str) -> str:
         status = getattr(getattr(e, "response", None), "status_code", None)
         if status == 429:
             message = "Hugging Face's free inference API rate limit was hit. Please try again in a moment."
+        elif status == 402:
+            message = (
+                "This month's free Hugging Face inference credits have run out. "
+                "They reset monthly; try again later or after the reset."
+            )
         else:
             message = f"Hugging Face's inference API returned an error (HTTP {status})."
         raise GenerationError(message, debug_detail=f"{type(e).__name__}: {e}") from e
