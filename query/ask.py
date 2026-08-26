@@ -37,9 +37,10 @@ Setup for the ollama backend: brew install ollama && ollama pull llama3.1,
 then `ollama serve` (may already be running after install).
 
 Setup for the huggingface backend: a free token from huggingface.co/settings/tokens,
-set as the HF_TOKEN environment variable (or st.secrets["HF_TOKEN"] in the
-deployed Streamlit app — app.py bridges that into the HF_TOKEN env var so
-this module never needs to know about Streamlit).
+set as the HF_TOKEN environment variable, or HF_TOKEN=... in a .env file in the
+repo root (auto-loaded via python-dotenv). In the deployed Streamlit app,
+st.secrets["HF_TOKEN"] is used instead — app.py bridges that into the HF_TOKEN
+env var so this module never needs to know about Streamlit.
 """
 
 import argparse
@@ -52,11 +53,14 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "ingest"))
 
 import anthropic
+from dotenv import load_dotenv
 from vector_store import get_collection
+
+load_dotenv()
 
 CLAUDE_MODEL = "claude-opus-5"
 OLLAMA_MODEL = "llama3.1"
-HF_MODEL = "Qwen/Qwen2.5-7B-Instruct"
+HF_MODEL = "openai/gpt-oss-20b"
 DEFAULT_MODELS = {"claude": CLAUDE_MODEL, "ollama": OLLAMA_MODEL, "huggingface": HF_MODEL}
 
 TOP_K = 5
@@ -180,6 +184,7 @@ def _generate_ollama(prompt: str, model: str) -> str:
 def _generate_huggingface(prompt: str, model: str) -> str:
     try:
         from huggingface_hub import InferenceClient
+        from huggingface_hub.errors import BadRequestError, HfHubHTTPError, InferenceTimeoutError
     except ImportError as e:
         raise GenerationError(
             "The `huggingface_hub` package isn't installed. Run: pip install huggingface_hub",
@@ -187,20 +192,38 @@ def _generate_huggingface(prompt: str, model: str) -> str:
         ) from e
 
     token = os.environ.get("HF_TOKEN")
-    client = InferenceClient(model=model, token=token)
+    client = InferenceClient(model=model, token=token, timeout=30)
     try:
         response = client.chat_completion(
             messages=[{"role": "user", "content": prompt}],
             max_tokens=1024,
         )
-    except Exception as e:
-        # The UI only ever shows a friendly message (rate limits and cold starts
-        # are normal on the free tier), but attach the real cause as debug_detail
-        # so it can be surfaced somewhere a human will actually see it — every
-        # HF failure otherwise looks identical from the outside.
+    except BadRequestError as e:
+        # HF's router rejects models with no live inference provider enabled on
+        # this token (a config problem, not a rate limit) — say so plainly
+        # instead of blaming it on rate limits like every other failure here.
         raise GenerationError(
-            "Hugging Face's free inference API is unavailable right now (this is usually "
-            "a rate limit or a model cold start). Please try again in a moment.",
+            f"Hugging Face rejected model {model!r}: it isn't currently served by any "
+            "inference provider available on this token. Pick a model with broader "
+            "provider support, or check https://hf.co/settings/inference-providers.",
+            debug_detail=f"{type(e).__name__}: {e}",
+        ) from e
+    except InferenceTimeoutError as e:
+        raise GenerationError(
+            "Hugging Face's free inference API timed out (this is usually a model cold "
+            "start or the free tier being busy). Please try again in a moment.",
+            debug_detail=f"{type(e).__name__}: {e}",
+        ) from e
+    except HfHubHTTPError as e:
+        status = getattr(getattr(e, "response", None), "status_code", None)
+        if status == 429:
+            message = "Hugging Face's free inference API rate limit was hit. Please try again in a moment."
+        else:
+            message = f"Hugging Face's inference API returned an error (HTTP {status})."
+        raise GenerationError(message, debug_detail=f"{type(e).__name__}: {e}") from e
+    except Exception as e:
+        raise GenerationError(
+            "Hugging Face's free inference API is unavailable right now. Please try again in a moment.",
             debug_detail=f"{type(e).__name__}: {e}",
         ) from e
     return response.choices[0].message.content
