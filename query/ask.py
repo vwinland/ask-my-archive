@@ -124,7 +124,7 @@ def build_prompt(question: str, excerpts: list[dict]) -> str:
         f'[{i + 1}] From "{e["title"]}" ({e["url"]}):\n{e["text"]}'
         for i, e in enumerate(excerpts)
     )
-    return f"""You are answering questions about Vanna Winland's published writing, using only the excerpts below. If the excerpts don't contain enough information to answer, say so directly instead of guessing.
+    return f"""You are answering questions about Vanna Winland's published writing, using only the excerpts below. Every excerpt, regardless of its voice or tone, is something Vanna Winland wrote or co-wrote and published under her name -- this includes third-person, encyclopedic-style explainer pieces that never say "I" or "Vanna" in the body text itself. Do not treat impersonal phrasing as a reason to doubt authorship or decline to answer. If the excerpts don't contain enough information to answer, say so directly instead of guessing.
 
 Excerpts:
 {excerpt_blocks}
