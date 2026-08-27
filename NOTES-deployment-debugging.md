@@ -124,3 +124,56 @@ fallback-guard change remains in `app/app.py`).
 with the prompt fix — it's what keeps the UI from ever showing a broken-looking
 blank answer again, even if a future model or prompt change reintroduces
 sparse output on a decline.
+
+---
+
+## 2026-08-27 — Same decline symptom recurred on IBM explainer questions, root cause was `seed`, not the prompt
+
+**Symptom:** The deployed app declined a well-covered question ("What has
+Vanna written about feature extraction?") with a real explanatory sentence
+this time — "the excerpts provided do not contain any information about
+Vanna Winland or her writings on feature extraction" — so the earlier
+`CITED:`-only and blank-answer bugs were both already ruled out by the
+symptom shape itself.
+
+**Investigation:** Queried the vector store directly for the same question:
+top result is exactly the IBM Think "What is feature extraction?" chunk at
+distance ~0.43, so retrieval is not at fault. Re-ran `query/ask.py --backend
+huggingface` locally at HEAD (temperature=0 already in place) across four
+phrasings of the question — all four returned correct, well-cited answers.
+Not reproducible on demand, which pointed at request-to-request variance
+rather than a deterministic prompt or retrieval bug.
+
+**Root cause:** `InferenceClient` in `_generate_huggingface()` never passed
+`provider=`, so HF's router auto-selects a backend per request. Inspecting
+a raw response object surfaced an `x_groq` field, confirming `openai/gpt-oss-20b`
+requests are actually being served by Groq — and every response carried a
+different, randomly-assigned `seed`, even with `temperature=0` set on our
+end. Groq doesn't derive a deterministic seed from `temperature=0`; without
+an explicit `seed`, each call is free to sample a different reasoning path.
+`gpt-oss-20b` is a reasoning model (responses carry a separate hidden
+`reasoning` field ahead of `content`), so a different sampled path can lead
+the model to a different judgment call on the exact question the prompt
+hardening was already trying to pin down: whether to trust that an
+impersonal, citation-heavy explainer chunk still counts as "written by
+Vanna." `temperature=0` constrained *how* it samples at each step, not
+*which* random path it starts from.
+
+**Fix:** Added `seed=0` alongside `temperature=0` in the `chat_completion()`
+call in `_generate_huggingface()` (`query/ask.py`). `InferenceClient.chat_completion`
+supports `seed` as a first-class parameter; pinning it removes the
+remaining source of run-to-run variance for a fixed prompt. Not re-verified
+live end-to-end — this investigation's own repeated test calls exhausted
+this month's free HF inference credits (hit the `402` handled by the prior
+entry) partway through, so live confirmation is blocked until the credit
+reset or a different token is used.
+
+**Why it's worth remembering:** `temperature=0` reads as "deterministic" but
+only constrains sampling *given* a seed — it says nothing about the seed
+itself. On a router that silently multiplexes across backend providers
+(here, Groq under HF's "auto" provider), the seed is provider-chosen and can
+vary per request unless pinned explicitly. This is a second, distinct way
+for the same symptom (decline despite good retrieval) to reappear after the
+first fix — worth checking response metadata for hidden provider-specific
+fields (`x_groq` and friends) whenever "same bug, still intermittent after
+the prompt fix" comes up again.
