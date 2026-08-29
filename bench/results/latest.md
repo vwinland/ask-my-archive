@@ -16,65 +16,50 @@
 
 ## How to read this
 
-Every check below is mechanical — it inspects the structure of the answer text,
-not its meaning. The answer text sits next to each verdict so you can check any
-verdict by eye without reading the harness source.
+Each check looks at the shape of the answer, not whether it's true. The answer
+is printed next to its verdicts so you can check them yourself.
 
-- **latency_s** — wall-clock seconds for the generation call. Retrieval is done
-  once per question and shared across all backends, so this is generation only.
+- **latency_s** — how many seconds the model took to answer.
 
-- **errored** — the backend raised a GenerationError (rate limit, quota,
-  model-not-served, timeout). The verbatim message is recorded. A backend being
-  unavailable is a result, not a benchmark failure; when errored is true the
-  structural checks below are reported as n/a.
+- **errored** — the backend was unavailable (rate limit, out of credits, model
+  not served, timeout). The message is kept as-is. That's a useful result, not
+  a failed test, so the other checks are skipped for that answer.
 
-- **cited_line_present** — the output contains a `CITED:` line at all. Its
-  absence is a formatting failure (the app splits on this marker; no marker
-  means the whole output renders as the answer with no sources).
+- **cited_line_present** — the answer ended with a `CITED:` line. Without it the
+  app can't tell the answer from its source list.
 
-- **prose_before_cited** — there is at least one non-empty line before the
-  `CITED:` line. This is the specific failure mode from the deployment
-  debugging notes: a model declining correctly in substance (`CITED: none`)
-  but with no sentence in front of it, which renders as a blank answer.
+- **prose_before_cited** — the model wrote at least one sentence before the
+  `CITED:` line. A `CITED:` line on its own shows up as a blank answer in the app.
 
-- **citation_format_valid** — the `CITED:` line parses: it is either
-  `CITED: none` or a comma-separated list that yields at least one integer.
-  (Parsed with ask.parse_cited_indices, the same function the app uses.)
+- **citation_format_valid** — the `CITED:` line could be read: either
+  `CITED: none` or a list of numbers.
 
-- **citations_in_range** — every cited excerpt number is within 1..k, i.e. the
-  model cited excerpts that were actually retrieved and shown to it, not
-  invented numbers.
+- **citations_in_range** — the numbers the model cited point at excerpts it was
+  actually shown, not made-up ones.
 
-- **citation_count** — how many distinct essays (deduped by title+url) the
-  answer cited, out of how many distinct essays were in the retrieved set. A
-  proxy for synthesis depth: citing 1 of 3 available essays on a cross-essay
-  question suggests shallower synthesis than citing 3 of 3. The denominator
-  matters — retrieval often returns several chunks of one essay, so a low count
-  can just mean the top-k was dominated by one source. It says nothing about
-  whether the citations are *correct* — only how many.
+- **citation_count** — how many different essays the answer drew from, out of
+  how many different essays were in the excerpts it got. Citing 1 of 3 on a
+  question that spans essays suggests a thinner answer than citing 3 of 3. The
+  second number matters: retrieval often returns several excerpts from the same
+  essay, so a low count can just mean there wasn't much to cite. This counts
+  citations, it doesn't judge them.
 
-- **looks_truncated** — the output ends mid-sentence with no `CITED:` line,
-  which usually means generation hit the backend's own output token cap
-  (`_generate_huggingface` caps at 1024, `_generate_ollama` uses Ollama's
-  default). A truncated answer loses its citation line, so this shows up as a
-  `citation_format_valid: False` too.
+- **looks_truncated** — the answer stopped mid-sentence with no `CITED:` line,
+  usually because the model ran out of room. A cut-off answer loses its
+  citation line too.
 
-- **decline_correct** — only meaningful for questions tagged
-  `expects_decline: true`. True when the answer declines the way it should: a
-  `CITED: none` line and no fabricated source citations. For questions that
-  should be answered, this is n/a.
+- **decline_correct** — only for questions the archive shouldn't be able to
+  answer. True when the model said so and cited nothing, rather than inventing
+  a connection. Marked n/a for questions that should get a real answer.
 
-- **extractive** — not a generative backend. It returns the top retrieved
-  excerpt(s) verbatim as the "answer", with zero model involvement. It exists
-  as a groundedness baseline: does a generative backend's answer plausibly
-  follow from what retrieval actually surfaced, or did it go further than the
-  source supports? It has no `CITED:` line by construction, so the citation and
-  decline checks are all n/a for it.
+- **extractive** — not a model. It just returns the top excerpts as the answer,
+  as a floor to compare against: did a model's answer stay close to what
+  retrieval actually found, or did it go further? It has no `CITED:` line, so
+  the citation and decline checks don't apply to it.
 
-Not checked here: semantic faithfulness — whether a model subtly misrepresented
-an excerpt while still citing it correctly. That gap is real and deliberately
-deferred; it needs a judge model or manual spot-checking. Add your own reading
-in the Notes section at the end.
+What this does not check: whether a model quietly twisted what an excerpt said
+while still citing it. Catching that needs a second model to grade, or a person
+reading closely. Put that reading in the Notes section at the end.
 
 
 ## well-covered-1 — well_covered
