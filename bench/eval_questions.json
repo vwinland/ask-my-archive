@@ -1,0 +1,20 @@
+[
+  {
+    "id": "well-covered-1",
+    "category": "well_covered",
+    "question": "What has Vanna written about how AI changes code review?",
+    "expects_decline": false
+  },
+  {
+    "id": "near-miss-1",
+    "category": "near_miss",
+    "question": "What does Vanna think about quantum computing?",
+    "expects_decline": true
+  },
+  {
+    "id": "cross-essay-1",
+    "category": "cross_essay_synthesis",
+    "question": "How does Vanna connect agentic AI coordination to platform engineering governance?",
+    "expects_decline": false
+  }
+]

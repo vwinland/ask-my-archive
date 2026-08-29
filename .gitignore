@@ -22,3 +22,6 @@ env/
 
 # cached clone of external repo
 ingest/_sources/
+
+# benchmark harness — local-only spend tracking, never committed
+bench/spend_tracker.json

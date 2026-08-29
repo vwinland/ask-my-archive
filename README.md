@@ -27,11 +27,11 @@ Live app: [Ask My Archive on Streamlit](https://ask-my-archive-gkuq5o8tdvnc7cs3w
 
 This is the retrieval and generation core, built and tested. It is not a production system, and I want to be specific about the gap rather than either overclaiming or underselling it:
 
-- **An evaluation harness.** I validated retrieval against three manual test questions. Production needs a labeled set of questions with known-correct sources, run automatically on every pipeline change.
+- **A fuller evaluation harness.** `bench/` turns the three manual test questions into a scriptable run with structural checks (decline correctness, citation-format validity, citation counts, latency, backend errors) and a self-explaining markdown report — enough to catch the failure modes that have actually hit production. Still missing: a labeled set of questions with known-correct sources, and semantic-faithfulness grading (did a model misrepresent an excerpt while still citing it correctly?), which needs a judge model or manual spot-checking.
 - **Monitoring.** I read the outputs by hand. Production needs logging on every query, with flags on declines and high-distance retrievals, reviewed regularly to catch corpus gaps or drift.
 - **Access control.** My corpus is all public writing, so this hasn't mattered yet. A business RAG system usually needs retrieval to respect who's asking, not just what's semantically closest.
 - **Continuous ingestion.** I ran indexing once, by hand. Production needs a pipeline that detects new or updated source documents automatically.
-- **Cost tracking at volume.** Three test questions cost nine cents. That's invisible at this scale and a real line item at production query volume.
+- **Cost tracking at volume.** Three test questions cost nine cents. That's invisible at this scale and a real line item at production query volume. (`bench/` enforces a local $0.50 cumulative cap on its own Claude calls, computed from the real `usage` field on every response — a dev-tool guardrail, not production cost accounting.)
 
 ## Stack
 
@@ -39,4 +39,4 @@ Python, Chroma, sentence-transformers, Streamlit, Anthropic API, Ollama, Hugging
 
 ## Status
 
-Actively being extended. Chat interface is built and deployed (Streamlit, Hugging Face backend). Full planned corpus — blog, IBM Think articles, and IBM Think tutorials — is ingested.
+Actively being extended. Chat interface is built and deployed (Streamlit, Hugging Face backend). Full planned corpus — blog, IBM Think articles, and IBM Think tutorials — is ingested. Backend benchmark harness in `bench/` for re-testing the generation backends when Hugging Face's free tier changes routing or drops a model.
